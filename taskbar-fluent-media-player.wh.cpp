@@ -3,7 +3,7 @@
 // @name            Taskbar Fluent Media Player
 // @description     Taskbar Fluent Media Player — is a Windhawk mod that integrates a modern media player with Fluent Design directly into the Windows 11 taskbar. It allows you to control music and view track information seamlessly without interrupting your workflow.
 // @description:ru-RU Taskbar Fluent Media Player — это мод Windhawk, который интегрирует современный медиаплеер в стиле Fluent Design прямо в панель задач Windows 11. Он позволяет управлять музыкой и просматривать информацию о треке без прерывания работы.
-// @version         1.6.0
+// @version         1.6.1
 // @author          Salyts
 // @github          https://github.com/Salyts
 // @include         explorer.exe
@@ -12,7 +12,7 @@
 
 // ==WindhawkModReadme==
 /*
-# Taskbar Fluent Media Player 1.6.0
+# Taskbar Fluent Media Player 1.6.1
 
 **Taskbar Fluent Media Player —** is a Windhawk mod that embeds a fully functional media player directly into your Windows 11 taskbar. No popups, no separate windows — just your music, always one glance away.
 
@@ -26,6 +26,7 @@
 * **Right-Click Context Menu —** Repeat and Shuffle each have their own submenu or single-button toggle mode. All items are optional, reorderable.
 * **Session Switching —** Multiple apps playing at once? Switch between media sessions with a dedicated button, a click, or by scrolling the mouse wheel over the album art — no need to open anything.
 * **Mini Player Popup —** Bind the new "Open player menu" click action to any click type to pop open a compact popup showing album art, title/artist, and Play/Pause, Previous, Next, and Switch Session buttons. Choose in **Player Menu Settings** whether it opens directly above the media player, or at a fixed position on the screen (any corner/edge, with distance offsets and slide-in animation direction — like the Notifications placement mod).
+* **Progress Bar —** A live progress bar under the track info that fills as the song plays. Click or drag it to jump anywhere in the song. The player menu (mini player popup) gets a larger seek bar with elapsed and total time. Configure it in **Progress Bar Settings**.
 * **Audio Visualizer —** Real-time spectrum bars (WASAPI loopback + FFT) with 5 shapes (Stereo, Mountain, Mirror, Wave, Breathe), 5 color modes, 6 EQ presets, and full size/position/sensitivity control.
 * **Smart Behavior —** Auto-hides when there is no media, in full-screen, or after a configurable idle timeout. Shows again the moment playback resumes.
 
@@ -932,6 +933,33 @@ If you encounter any issues or have a feature suggestion, please open a report o
   $name: Player Menu Settings
   $name:ru-RU: Настройки меню плеера
 
+- ProgressBarSettings:
+  - showProgressBar: true
+    $name: Show progress bar in the media player
+    $name:ru-RU: Показывать полосу прогресса в медиаплеере
+    $description: A thin bar under the track title and artist that fills as the song plays. Click or drag it to jump to another part of the song.
+    $description:ru-RU: Тонкая полоса под названием и исполнителем, которая заполняется по мере воспроизведения. Нажмите или перетащите, чтобы перейти к другой части трека.
+  - progressBarHeight: 3
+    $name: Progress bar thickness (px)
+    $name:ru-RU: Толщина полосы прогресса (px)
+  - showProgressTimes: false
+    $name: Show elapsed and total time next to the progress bar
+    $name:ru-RU: Показывать прошедшее и общее время рядом с полосой прогресса
+    $description: Adds small elapsed / total time labels on both sides of the bar in the taskbar player. Works best with a player height of 40 or more.
+    $description:ru-RU: Добавляет небольшие подписи прошедшего / общего времени по бокам полосы в плеере на панели задач. Лучше всего работает при высоте плеера от 40.
+  - showMiniPlayerProgressBar: true
+    $name: Show progress bar in the player menu
+    $name:ru-RU: Показывать полосу прогресса в меню плеера
+    $description: Adds a seek bar with elapsed and total time to the player menu (mini player popup).
+    $description:ru-RU: Добавляет полосу перемотки с прошедшим и общим временем в меню плеера (мини-плеер).
+  - progressBarColor: ""
+    $name: Progress bar color (RGB)
+    $name:ru-RU: Цвет полосы прогресса (RGB)
+    $description: "Leave empty to use the Media Buttons color. Use '-1 -1 -1' for the system accent color and '-2 -2 -2' for the album art color. You can also specify two colors separated by a $ symbol (e.g., '0 0 0$255 255 255') where the first color is for light theme and the second for dark theme."
+    $description:ru-RU: "Оставьте пустым, чтобы использовать цвет кнопок управления. Используйте '-1 -1 -1' для системного цвета акцента, '-2 -2 -2' — для цвета обложки альбома. Также можно указать два цвета через $ (например, '0 0 0$255 255 255')."
+  $name: Progress Bar Settings
+  $name:ru-RU: Настройки полосы прогресса
+
 - BehaviorSettings:
   - disableAlbumArtClick: false
     $name: Disable album art click (click through to player)
@@ -1374,6 +1402,11 @@ struct ModSettings {
     bool         showMiniPlayerBorder = false;
     bool         keepMiniPlayerOpen   = false;
     bool         hideMediaSessionsList = false;
+    bool         showProgressBar      = true;
+    int          progressBarHeight    = 3;
+    bool         showProgressTimes    = false;
+    bool         showMiniPlayerProgressBar = true;
+    std::wstring progressBarColor     = L"";
     std::wstring miniPlayerPlacementMode = L"screen";
     int          miniPlayerHorizontalOffsetAbove = 0;
     std::wstring miniPlayerVerticalPlacementNear = L"top";
@@ -1785,6 +1818,11 @@ static void LoadSettings() {
     g_settings.showLayoutAnchors    = Wh_GetIntSetting(L"DebugSettings.showLayoutAnchors") != 0;
     g_settings.keepMiniPlayerOpen   = Wh_GetIntSetting(L"PlayerMenuSettings.keepMiniPlayerOpen") != 0;
     g_settings.hideMediaSessionsList = Wh_GetIntSetting(L"PlayerMenuSettings.hideMediaSessionsList") != 0;
+    g_settings.showProgressBar      = Wh_GetIntSetting(L"ProgressBarSettings.showProgressBar") != 0;
+    g_settings.progressBarHeight    = std::clamp(Wh_GetIntSetting(L"ProgressBarSettings.progressBarHeight"), 1, 10);
+    g_settings.showProgressTimes    = Wh_GetIntSetting(L"ProgressBarSettings.showProgressTimes") != 0;
+    g_settings.showMiniPlayerProgressBar = Wh_GetIntSetting(L"ProgressBarSettings.showMiniPlayerProgressBar") != 0;
+    g_settings.progressBarColor     = Str(L"ProgressBarSettings.progressBarColor", L"");
     g_settings.miniPlayerPlacementMode = Str(L"PlayerMenuSettings.placementMode", L"screen");
     g_settings.miniPlayerHorizontalOffsetAbove =
         Wh_GetIntSetting(L"PlayerMenuSettings.PlayerMenuSettingsNear.miniPlayerHorizontalOffsetNear");
@@ -1880,6 +1918,8 @@ static void LoadSettings() {
 static HWND FindCurrentProcessTaskbarWnd();
 static void DispatchMediaUpdate();
 static void RefreshMiniPlayerFlyoutUI();
+static void FetchTimelineAsync();
+static void StopProgressTimer();
 static void FetchMiniSessionInfosAsync(HWND taskbarWnd);
 struct MiniSessionInfo;
 static void AnimateSessionPill(winrt::Windows::UI::Xaml::Shapes::Rectangle const& pill, bool isCurrent, bool animate);
@@ -2018,6 +2058,39 @@ struct MediaState {
 };
 static MediaState g_media;
 static std::mutex g_mediaMtx;
+// Playback timeline of the current session, guarded by g_mediaMtx.
+// basePosSec is the position at sampledAt; while playing, the live position
+// is extrapolated from it so the progress bar moves between app updates.
+struct TimelineState {
+    double  basePosSec  = 0.0;
+    double  durationSec = 0.0;
+    int64_t startTicks  = 0;
+    std::chrono::steady_clock::time_point sampledAt = std::chrono::steady_clock::now();
+    bool    valid       = false;
+};
+static TimelineState g_timeline;
+static std::chrono::steady_clock::time_point g_seekHoldUntil{};
+// Caller holds g_mediaMtx.
+static double TimelinePositionLocked(bool playing) {
+    double pos = g_timeline.basePosSec;
+    if (playing) {
+        pos += std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - g_timeline.sampledAt).count();
+    }
+    if (g_timeline.durationSec > 0.0) pos = std::min(pos, g_timeline.durationSec);
+    return std::max(0.0, pos);
+}
+static bool GetTimelineSnapshot(double& posSec, double& durSec, bool& canSeek) {
+    std::lock_guard<std::mutex> lk(g_mediaMtx);
+    posSec = 0.0;
+    durSec = 0.0;
+    canSeek = false;
+    if (!g_media.hasMedia || !g_timeline.valid || g_timeline.durationSec <= 0.0) return false;
+    durSec  = g_timeline.durationSec;
+    posSec  = TimelinePositionLocked(g_media.isPlaying);
+    canSeek = g_media.canSeek;
+    return true;
+}
 static std::wstring g_lastTitleArtistKey;
 static uint64_t     g_suspectArtSize   = 0;
 static uint64_t     g_suspectArtHash   = 0;
@@ -2074,6 +2147,7 @@ static winrt::event_token g_evSessionsChanged{};
 static winrt::event_token g_evCurrentChanged{};
 static winrt::event_token g_evMediaProps{};
 static winrt::event_token g_evPlayback{};
+static winrt::event_token g_evTimeline{};
 static HANDLE g_mediaThread    = nullptr;
 static HANDLE g_mediaStopEvent = nullptr;
 static bool IsSystemLightTheme() {
@@ -3754,6 +3828,14 @@ static void FetchMediaPropertiesAsync() {
                 {
                     std::lock_guard<std::mutex> lk(g_mediaMtx);
                     try {
+                        {
+                            std::wstring newTitle(props.Title());
+                            std::wstring newArtist(props.Artist());
+                            if (newTitle != g_media.title || newArtist != g_media.artist) {
+                                g_timeline.basePosSec = 0.0;
+                                g_timeline.sampledAt  = std::chrono::steady_clock::now();
+                            }
+                        }
                         g_media.title          = std::wstring(props.Title());
                         g_media.artist         = std::wstring(props.Artist());
                         g_media.hasMedia       = !g_media.title.empty() || !g_media.artist.empty();
@@ -3775,6 +3857,7 @@ static void FetchMediaPropertiesAsync() {
             } catch (...) {
             }
         } catch (...) {}
+        FetchTimelineAsync();
         DispatchMediaUpdate();
         winrt::uninit_apartment();
     });
@@ -3799,9 +3882,14 @@ static void FetchPlaybackInfoAsync() {
                     {
                         std::lock_guard<std::mutex> lk(g_mediaMtx);
                         wasPlaying = g_media.isPlaying;
+                        if (playing != wasPlaying) {
+                            g_timeline.basePosSec = TimelinePositionLocked(wasPlaying);
+                            g_timeline.sampledAt  = std::chrono::steady_clock::now();
+                        }
                         g_media.isPlaying = playing;
                     }
                     if (playing != wasPlaying) {
+                        FetchTimelineAsync();
                         if (!playing && wasPlaying) {
                             if (!g_unloading) OnSessionsChanged();
                         }
@@ -3852,12 +3940,87 @@ static void FetchPlaybackInfoAsync() {
         winrt::uninit_apartment();
     });
 }
+static void FetchTimelineAsync() {
+    SpawnTrackedWorker([]() {
+        if (g_unloading) return;
+        winrt::init_apartment(winrt::apartment_type::multi_threaded);
+        try {
+            GlobalSystemMediaTransportControlsSession session{nullptr};
+            { std::lock_guard<std::mutex> lk(g_sessionMtx); session = g_currentSession; }
+            if (session) {
+                auto tl = session.GetTimelineProperties();
+                bool playing = false;
+                try {
+                    auto info = session.GetPlaybackInfo();
+                    playing = info && info.PlaybackStatus() ==
+                        GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing;
+                } catch (...) {}
+                int64_t startTicks = tl.StartTime().count();
+                int64_t endTicks   = tl.EndTime().count();
+                int64_t posTicks   = tl.Position().count();
+                double durSec = (double)(endTicks - startTicks) / 1e7;
+                double posSec = (double)(posTicks - startTicks) / 1e7;
+                if (playing && durSec > 0.0) {
+                    // Apps only report the position now and then; account for the
+                    // time that has passed since that report.
+                    try {
+                        auto last = tl.LastUpdatedTime();
+                        if (last.time_since_epoch().count() > 0) {
+                            double ago = std::chrono::duration<double>(winrt::clock::now() - last).count();
+                            if (ago > 0.0 && ago < durSec) posSec += ago;
+                        }
+                    } catch (...) {}
+                }
+                {
+                    std::lock_guard<std::mutex> lk(g_mediaMtx);
+                    auto now = std::chrono::steady_clock::now();
+                    if (now >= g_seekHoldUntil) {
+                        g_timeline.durationSec = std::max(0.0, durSec);
+                        g_timeline.startTicks  = startTicks;
+                        g_timeline.basePosSec  = std::clamp(posSec, 0.0, std::max(0.0, durSec));
+                        g_timeline.sampledAt   = now;
+                        g_timeline.valid       = durSec > 0.0;
+                    }
+                }
+            }
+        } catch (...) {}
+        winrt::uninit_apartment();
+    });
+}
+static void SeekToSecondsAsync(double targetSec) {
+    int64_t startTicks = 0;
+    {
+        std::lock_guard<std::mutex> lk(g_mediaMtx);
+        if (!g_timeline.valid) return;
+        targetSec = std::clamp(targetSec, 0.0, g_timeline.durationSec);
+        startTicks = g_timeline.startTicks;
+        // Show the new position right away; ignore stale reports for a moment
+        // while the app catches up with the seek.
+        g_timeline.basePosSec = targetSec;
+        g_timeline.sampledAt  = std::chrono::steady_clock::now();
+        g_seekHoldUntil = g_timeline.sampledAt + std::chrono::milliseconds(1500);
+    }
+    int64_t targetTicks = startTicks + (int64_t)(targetSec * 1e7);
+    SpawnTrackedWorker([targetTicks]() {
+        if (g_unloading) return;
+        winrt::init_apartment(winrt::apartment_type::multi_threaded);
+        try {
+            GlobalSystemMediaTransportControlsSession session{nullptr};
+            { std::lock_guard<std::mutex> lk(g_sessionMtx); session = g_currentSession; }
+            if (session) session.TryChangePlaybackPositionAsync(targetTicks).get();
+        } catch (...) {
+            Wh_Log(L"SeekToSecondsAsync: seek failed");
+        }
+        winrt::uninit_apartment();
+    });
+}
 static void DetachCurrentSession() {
     std::lock_guard<std::mutex> lk(g_sessionMtx);
     if (!g_currentSession) return;
     try {
         if (g_evMediaProps.value) { g_currentSession.MediaPropertiesChanged(g_evMediaProps); g_evMediaProps = {}; }
         if (g_evPlayback.value)   { g_currentSession.PlaybackInfoChanged(g_evPlayback); g_evPlayback = {}; }
+        if (g_evTimeline.value)   { g_currentSession.TimelinePropertiesChanged(g_evTimeline); g_evTimeline = {}; }
     } catch (...) {}
     g_currentSession = nullptr;
     g_repeatMode = RepeatMode::Off;
@@ -3869,6 +4032,7 @@ static void DetachCurrentSession() {
         g_media.canShuffle      = true;
         g_media.canRepeat       = true;
         g_media.canSeek         = true;
+        g_timeline = TimelineState{};
     }
 }
 static GlobalSystemMediaTransportControlsSession PickBestSession() {
@@ -4003,6 +4167,11 @@ static void AttachToSession(GlobalSystemMediaTransportControlsSession session) {
             g_evPlayback = g_currentSession.PlaybackInfoChanged([](auto const&, auto const&) {
                 if (!g_unloading) FetchPlaybackInfoAsync();
             });
+            try {
+                g_evTimeline = g_currentSession.TimelinePropertiesChanged([](auto const&, auto const&) {
+                    if (!g_unloading) FetchTimelineAsync();
+                });
+            } catch (...) {}
         } catch (...) {
             Wh_Log(L"AttachToSession: Failed to attach event handlers");
             g_currentSession = nullptr;
@@ -4012,6 +4181,7 @@ static void AttachToSession(GlobalSystemMediaTransportControlsSession session) {
 fetch:
     FetchMediaPropertiesAsync();
     FetchPlaybackInfoAsync();
+    FetchTimelineAsync();
 }
 static void OnSessionsChanged() {
     if (g_unloading) return;
@@ -5063,6 +5233,7 @@ static void StartTimerThread() {
 static void StopTimerThread() {
     StopScrollTimer();
     StopVizTimer();
+    StopProgressTimer();
     StopVizCaptureThread();
     if (g_timerStopEvent) SetEvent(g_timerStopEvent);
     if (g_timerThread) {
@@ -5092,6 +5263,364 @@ static void StopTimerThread() {
     if (g_timerStopEvent) { CloseHandle(g_timerStopEvent); g_timerStopEvent = nullptr; }
     if (g_timerUpdateEvent) { CloseHandle(g_timerUpdateEvent); g_timerUpdateEvent = nullptr; }
 }
+// ---- Progress / seek bar ---------------------------------------------------
+struct SeekBarParts {
+    Grid      host{nullptr};
+    Border    track{nullptr};
+    Border    fill{nullptr};
+    winrt::Windows::UI::Xaml::Shapes::Ellipse thumb{nullptr};
+    TextBlock elapsedText{nullptr};
+    TextBlock totalText{nullptr};
+    FrameworkElement container{nullptr};
+    bool      forTaskbar    = false;
+    double    barHeight     = 3.0;
+    double    hoverHeight   = 5.0;
+    bool      dragging      = false;
+    bool      hovered       = false;
+    double    previewFrac   = 0.0;
+    std::wstring lastElapsed;
+    std::wstring lastTotal;
+};
+[[clang::no_destroy]] static std::shared_ptr<SeekBarParts> g_taskbarSeekBar;
+[[clang::no_destroy]] static std::shared_ptr<SeekBarParts> g_miniSeekBar;
+[[clang::no_destroy]] static winrt::Windows::UI::Xaml::DispatcherTimer g_progressDispatcherTimer{nullptr};
+static winrt::event_token g_progressDispatcherTimerToken{};
+static bool g_progressDispatcherTimerHasToken = false;
+static int  g_progressResyncTicks = 0;
+
+static std::wstring FormatTrackTime(double sec) {
+    if (!(sec >= 0.0)) sec = 0.0;
+    long long t = (long long)sec;
+    long long h = t / 3600, m = (t / 60) % 60, sx = t % 60;
+    auto two = [](long long v) {
+        std::wstring r = std::to_wstring(v);
+        return v < 10 ? L"0" + r : r;
+    };
+    if (h > 0) return std::to_wstring(h) + L":" + two(m) + L":" + two(sx);
+    return std::to_wstring(m) + L":" + two(sx);
+}
+static winrt::Windows::UI::Color ProgressBarColor() {
+    if (g_settings.progressBarColor.empty()) return ButtonColor();
+    auto c = ParseColorWithThemeSupport(g_settings.progressBarColor, 255);
+    if (c.A == 0) return ButtonColor();
+    return c;
+}
+static void ApplySeekBarColors(SeekBarParts& p) {
+    if (!p.host) return;
+    try {
+        auto c = ProgressBarColor();
+        winrt::Windows::UI::Color trackClr{(BYTE)(c.A * 0.25), c.R, c.G, c.B};
+        if (p.track) p.track.Background(MakeBrush(trackClr));
+        if (p.fill)  p.fill.Background(MakeBrush(c));
+        if (p.thumb) p.thumb.Fill(MakeBrush(c));
+        auto textClr = p.forTaskbar ? ArtistColor() : TextColor();
+        if (p.elapsedText) p.elapsedText.Foreground(MakeBrush(textClr));
+        if (p.totalText)   p.totalText.Foreground(MakeBrush(textClr));
+    } catch (...) {}
+}
+static void RenderSeekBar(SeekBarParts& p) {
+    if (!p.host) return;
+    try {
+        double pos = 0.0, dur = 0.0;
+        bool canSeek = false;
+        bool known = GetTimelineSnapshot(pos, dur, canSeek);
+        if (!known) p.dragging = false;
+        double frac = (known && dur > 0.0) ? pos / dur : 0.0;
+        if (p.dragging) {
+            frac = p.previewFrac;
+            pos  = frac * dur;
+        }
+        frac = std::clamp(frac, 0.0, 1.0);
+
+        if (p.forTaskbar && p.container) {
+            auto vis = known ? Visibility::Visible : Visibility::Collapsed;
+            if (p.container.Visibility() != vis) p.container.Visibility(vis);
+        }
+        p.host.Opacity(known ? 1.0 : 0.5);
+
+        bool active = known && canSeek && (p.hovered || p.dragging);
+        double h = active ? p.hoverHeight : p.barHeight;
+        if (p.track.Height() != h) {
+            CornerRadius cr{h / 2, h / 2, h / 2, h / 2};
+            p.track.Height(h);
+            p.track.CornerRadius(cr);
+            p.fill.Height(h);
+            p.fill.CornerRadius(cr);
+        }
+
+        double w = p.host.ActualWidth();
+        double fillW = std::max(0.0, frac * w);
+        p.fill.Width(fillW);
+        if (p.thumb) {
+            p.thumb.Visibility(active ? Visibility::Visible : Visibility::Collapsed);
+            double tw = p.thumb.Width();
+            double left = std::clamp(fillW - tw / 2, 0.0, std::max(0.0, w - tw));
+            p.thumb.Margin({left, 0, 0, 0});
+        }
+
+        std::wstring el  = known ? FormatTrackTime(pos) : L"0:00";
+        std::wstring tot = known ? FormatTrackTime(dur) : L"--:--";
+        if (p.elapsedText && el != p.lastElapsed) {
+            p.elapsedText.Text(winrt::hstring(el));
+            p.lastElapsed = el;
+        }
+        if (p.totalText && tot != p.lastTotal) {
+            p.totalText.Text(winrt::hstring(tot));
+            p.lastTotal = tot;
+        }
+    } catch (...) {}
+}
+static double SeekFracFromPointer(Grid const& host, PointerRoutedEventArgs const& e) {
+    double w = host.ActualWidth();
+    if (w <= 0.0) return 0.0;
+    double x = e.GetCurrentPoint(host).Position().X;
+    return std::clamp(x / w, 0.0, 1.0);
+}
+static void ProgressTimerTick(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Windows::Foundation::IInspectable const&) {
+    if (g_unloading || g_applyingSettings) return;
+    bool any = false;
+    if (g_taskbarSeekBar && g_taskbarSeekBar->host) {
+        RenderSeekBar(*g_taskbarSeekBar);
+        any = true;
+    }
+    if (g_miniPlayerFlyoutOpen && g_miniSeekBar && g_miniSeekBar->host) {
+        RenderSeekBar(*g_miniSeekBar);
+        any = true;
+    }
+    if (!any) return;
+    bool playing = false;
+    {
+        std::lock_guard<std::mutex> lk(g_mediaMtx);
+        playing = g_media.hasMedia && g_media.isPlaying;
+    }
+    // Re-sync with the app every few seconds so the bar never drifts.
+    if (playing && ++g_progressResyncTicks >= 20) {
+        g_progressResyncTicks = 0;
+        FetchTimelineAsync();
+    }
+}
+// Must be called on the taskbar UI thread.
+static void EnsureProgressTimer() {
+    try {
+        if (!g_progressDispatcherTimer) {
+            g_progressDispatcherTimer = winrt::Windows::UI::Xaml::DispatcherTimer();
+            g_progressDispatcherTimer.Interval(
+                winrt::Windows::Foundation::TimeSpan{std::chrono::milliseconds(250)});
+            g_progressDispatcherTimerToken = g_progressDispatcherTimer.Tick(&ProgressTimerTick);
+            g_progressDispatcherTimerHasToken = true;
+        }
+        if (!g_progressDispatcherTimer.IsEnabled()) g_progressDispatcherTimer.Start();
+    } catch (...) {}
+}
+static void StopProgressTimer() {
+    HWND hWnd = g_taskbarWnd;
+    auto stop = [](void*) {
+        try {
+            if (g_progressDispatcherTimer) {
+                g_progressDispatcherTimer.Stop();
+                if (g_unloading) {
+                    if (g_progressDispatcherTimerHasToken) {
+                        g_progressDispatcherTimer.Tick(g_progressDispatcherTimerToken);
+                        g_progressDispatcherTimerHasToken = false;
+                    }
+                    g_progressDispatcherTimer = nullptr;
+                }
+            }
+        } catch (...) {}
+    };
+    if (hWnd && IsWindow(hWnd)) {
+        RunFromWindowThread(hWnd, stop, nullptr);
+    } else {
+        stop(nullptr);
+    }
+}
+// forTaskbar: thin bar under the track info (optionally with inline times).
+// Otherwise: larger bar for the player menu with times underneath.
+static std::shared_ptr<SeekBarParts> BuildSeekBar(bool forTaskbar) {
+    auto p = std::make_shared<SeekBarParts>();
+    std::weak_ptr<SeekBarParts> weak = p;
+    p->forTaskbar  = forTaskbar;
+    p->barHeight   = forTaskbar ? (double)g_settings.progressBarHeight : 4.0;
+    p->hoverHeight = forTaskbar ? p->barHeight + 2.0 : 6.0;
+    double hitHeight = forTaskbar ? std::max(p->barHeight + 8.0, 11.0) : 16.0;
+
+    Grid host;
+    host.Name(L"FluentMedia_ProgressBar");
+    host.Height(hitHeight);
+    host.HorizontalAlignment(HorizontalAlignment::Stretch);
+    host.VerticalAlignment(VerticalAlignment::Center);
+    host.Background(MakeBrush({0x00, 0x00, 0x00, 0x00}));
+
+    Border track;
+    track.HorizontalAlignment(HorizontalAlignment::Stretch);
+    track.VerticalAlignment(VerticalAlignment::Center);
+    track.IsHitTestVisible(false);
+    host.Children().Append(track);
+
+    Border fill;
+    fill.HorizontalAlignment(HorizontalAlignment::Left);
+    fill.VerticalAlignment(VerticalAlignment::Center);
+    fill.Width(0.0);
+    fill.IsHitTestVisible(false);
+    host.Children().Append(fill);
+
+    p->host  = host;
+    p->track = track;
+    p->fill  = fill;
+
+    if (!forTaskbar) {
+        winrt::Windows::UI::Xaml::Shapes::Ellipse thumb;
+        thumb.Width(12.0);
+        thumb.Height(12.0);
+        thumb.HorizontalAlignment(HorizontalAlignment::Left);
+        thumb.VerticalAlignment(VerticalAlignment::Center);
+        thumb.Visibility(Visibility::Collapsed);
+        thumb.IsHitTestVisible(false);
+        host.Children().Append(thumb);
+        p->thumb = thumb;
+    }
+
+    auto makeTimeText = [](double fontSize, TextAlignment align) {
+        TextBlock tb;
+        tb.FontSize(fontSize);
+        tb.Opacity(0.7);
+        tb.TextAlignment(align);
+        tb.VerticalAlignment(VerticalAlignment::Center);
+        tb.TextWrapping(TextWrapping::NoWrap);
+        tb.IsHitTestVisible(false);
+        return tb;
+    };
+
+    if (forTaskbar) {
+        // Keep the bar's layout footprint to its visible thickness; the extra
+        // hit area overlaps the text above and below so it's easy to grab.
+        double extra = (hitHeight - p->barHeight) / 2.0;
+        if (g_settings.showProgressTimes) {
+            Grid row;
+            ColumnDefinition c0; c0.Width({1.0, GridUnitType::Auto});
+            ColumnDefinition c1; c1.Width({1.0, GridUnitType::Star});
+            ColumnDefinition c2; c2.Width({1.0, GridUnitType::Auto});
+            row.ColumnDefinitions().Append(c0);
+            row.ColumnDefinitions().Append(c1);
+            row.ColumnDefinitions().Append(c2);
+            auto elapsed = makeTimeText(9.0, TextAlignment::Left);
+            auto total   = makeTimeText(9.0, TextAlignment::Right);
+            for (auto const& tb : {elapsed, total}) {
+                tb.LineStackingStrategy(LineStackingStrategy::BlockLineHeight);
+                tb.LineHeight(10.0);
+            }
+            Grid::SetColumn(elapsed, 0);
+            Grid::SetColumn(host, 1);
+            Grid::SetColumn(total, 2);
+            host.Margin({4, -extra, 4, -extra});
+            row.Children().Append(elapsed);
+            row.Children().Append(host);
+            row.Children().Append(total);
+            row.Margin({0, 2, 0, 0});
+            p->elapsedText = elapsed;
+            p->totalText   = total;
+            p->container   = row;
+        } else {
+            host.Margin({0, 3 - extra, 0, -extra});
+            p->container = host;
+        }
+        host.MinWidth(40.0);
+        if (auto fe = p->container) {
+            double maxW = (double)g_settings.textAreaMaxWidth;
+            fe.MinWidth(maxW > 0 ? std::min(maxW, 100.0) : 100.0);
+        }
+    } else {
+        StackPanel col;
+        col.Orientation(Orientation::Vertical);
+        col.HorizontalAlignment(HorizontalAlignment::Stretch);
+        col.Margin({0, 8, 0, 0});
+        col.Children().Append(host);
+        Grid times;
+        times.Margin({0, 0, 0, 0});
+        auto elapsed = makeTimeText(11.0, TextAlignment::Left);
+        auto total   = makeTimeText(11.0, TextAlignment::Right);
+        elapsed.HorizontalAlignment(HorizontalAlignment::Left);
+        total.HorizontalAlignment(HorizontalAlignment::Right);
+        times.Children().Append(elapsed);
+        times.Children().Append(total);
+        col.Children().Append(times);
+        p->elapsedText = elapsed;
+        p->totalText   = total;
+        p->container   = col;
+    }
+
+    host.SizeChanged([weak](auto const&, auto const&) {
+        if (auto sp = weak.lock()) RenderSeekBar(*sp);
+    });
+    host.PointerEntered([weak](auto const&, PointerRoutedEventArgs const&) {
+        if (auto sp = weak.lock()) { sp->hovered = true; RenderSeekBar(*sp); }
+    });
+    host.PointerExited([weak](auto const&, PointerRoutedEventArgs const&) {
+        if (auto sp = weak.lock()) { sp->hovered = false; RenderSeekBar(*sp); }
+    });
+    host.PointerPressed([weak](auto const&, PointerRoutedEventArgs const& e) {
+        auto sp = weak.lock();
+        if (!sp || g_unloading) return;
+        try {
+            if (!e.GetCurrentPoint(sp->host).Properties().IsLeftButtonPressed()) return;
+            double pos = 0.0, dur = 0.0;
+            bool canSeek = false;
+            if (!GetTimelineSnapshot(pos, dur, canSeek) || !canSeek) return;
+            sp->dragging    = true;
+            sp->previewFrac = SeekFracFromPointer(sp->host, e);
+            sp->host.CapturePointer(e.Pointer());
+            RenderSeekBar(*sp);
+            e.Handled(true);
+        } catch (...) {}
+    });
+    host.PointerMoved([weak](auto const&, PointerRoutedEventArgs const& e) {
+        auto sp = weak.lock();
+        if (!sp || !sp->dragging) return;
+        try {
+            sp->previewFrac = SeekFracFromPointer(sp->host, e);
+            RenderSeekBar(*sp);
+            e.Handled(true);
+        } catch (...) {}
+    });
+    host.PointerReleased([weak](auto const&, PointerRoutedEventArgs const& e) {
+        auto sp = weak.lock();
+        if (!sp || !sp->dragging) return;
+        try {
+            double frac = SeekFracFromPointer(sp->host, e);
+            sp->dragging = false;
+            sp->host.ReleasePointerCapture(e.Pointer());
+            double pos = 0.0, dur = 0.0;
+            bool canSeek = false;
+            if (GetTimelineSnapshot(pos, dur, canSeek) && canSeek) {
+                SeekToSecondsAsync(frac * dur);
+            }
+            RenderSeekBar(*sp);
+            e.Handled(true);
+        } catch (...) {}
+    });
+    host.PointerCanceled([weak](auto const&, PointerRoutedEventArgs const&) {
+        if (auto sp = weak.lock()) { sp->dragging = false; RenderSeekBar(*sp); }
+    });
+    host.PointerCaptureLost([weak](auto const&, PointerRoutedEventArgs const&) {
+        if (auto sp = weak.lock()) {
+            if (sp->dragging) { sp->dragging = false; RenderSeekBar(*sp); }
+        }
+    });
+
+    if (!forTaskbar) {
+        try {
+            ToolTip tt;
+            tt.Content(winrt::box_value(winrt::hstring(L"Click or drag to seek")));
+            ToolTipService::SetToolTip(host, tt);
+        } catch (...) {}
+    }
+
+    ApplySeekBarColors(*p);
+    RenderSeekBar(*p);
+    return p;
+}
+// ---------------------------------------------------------------------------
 static void RefreshThemeColors() {
     if (!g_playerGrid || g_unloading || g_applyingSettings) return;
     g_vizBaseColorDirty = true;
@@ -5155,6 +5684,7 @@ static void RefreshThemeColors() {
                 }
             }
         }
+        if (g_taskbarSeekBar) ApplySeekBarColors(*g_taskbarSeekBar);
     } catch (...) {}
 }
 static HMONITOR GetMonitorByNumber(int monitorNumber) {
@@ -6727,6 +7257,19 @@ static Grid BuildMiniPlayerFlyoutContent() {
     artistBlock.Text(artist.empty() ? winrt::hstring(L" ") : winrt::hstring(artist));
     content.Children().Append(wrapDebugBorder(artistBlock, {0xFF, 0x00, 0xFF, 0x00}));
 
+    g_miniSeekBar.reset();
+    if (g_settings.showMiniPlayerProgressBar) {
+        try {
+            g_miniSeekBar = BuildSeekBar(false);
+            if (g_miniSeekBar && g_miniSeekBar->container) {
+                content.Children().Append(wrapDebugBorder(g_miniSeekBar->container, {0xFF, 0x00, 0xFF, 0xFF}));
+                EnsureProgressTimer();
+            }
+        } catch (...) {
+            g_miniSeekBar.reset();
+        }
+    }
+
     StackPanel controlsRow;
     controlsRow.Orientation(Orientation::Horizontal);
     controlsRow.HorizontalAlignment(HorizontalAlignment::Center);
@@ -7273,6 +7816,11 @@ static void ShowMiniPlayerFlyout(FrameworkElement const& target) {
                 g_miniSessionInfos.clear();
             }
             RefreshMiniPlayerFlyoutUI();
+            if (g_miniSeekBar) {
+                EnsureProgressTimer();
+                FetchTimelineAsync();
+                RenderSeekBar(*g_miniSeekBar);
+            }
             if (!g_settings.hideMediaSessionsList) {
                 FetchMiniSessionInfosAsync(g_taskbarWnd);
             }
@@ -7464,6 +8012,7 @@ static void ShowMiniPlayerFlyout(FrameworkElement const& target) {
             g_miniPlayerRepeatBtnRef = nullptr;
             g_miniPlayerSessionListRef = nullptr;
             g_miniPlayerSessionListSepRef = nullptr;
+            g_miniSeekBar.reset();
             g_miniSessionCachedThumbSizes.clear();
             if (g_playerButtonStateUpdater) g_playerButtonStateUpdater();
         });
@@ -8092,6 +8641,18 @@ static Grid BuildPlayerGrid() {
                             textStack.Children().Append(artistBlock);
                         }
                     }
+                }
+            }
+            if (g_settings.showProgressBar) {
+                try {
+                    g_taskbarSeekBar = BuildSeekBar(true);
+                    if (g_taskbarSeekBar && g_taskbarSeekBar->container) {
+                        textStack.Children().Append(g_taskbarSeekBar->container);
+                        EnsureProgressTimer();
+                    }
+                } catch (...) {
+                    Wh_Log(L"BuildPlayerGrid: Exception adding progress bar");
+                    g_taskbarSeekBar.reset();
                 }
             }
             textContainer.Child(textStack);
@@ -9068,6 +9629,8 @@ static void RemovePlayerGrid() {
         g_playerColumn    = -1;
         g_playerToolTip   = nullptr;
         g_playerButtonStateUpdater = nullptr;
+        g_taskbarSeekBar.reset();
+        StopProgressTimer();
         g_cachedAlbumTitle.clear();
         g_cachedAlbumArtist.clear();
         g_cachedThumbnailBytes.clear();
@@ -9088,12 +9651,15 @@ static void RemovePlayerGrid() {
         g_miniPlayerRepeatBtnRef      = nullptr;
         g_miniPlayerSessionListRef    = nullptr;
         g_miniPlayerSessionListSepRef = nullptr;
+        g_miniSeekBar.reset();
     } catch (...) {
         g_playerGrid      = nullptr;
         g_injectionParent = nullptr;
         g_playerColumn    = -1;
         g_playerToolTip   = nullptr;
         g_playerButtonStateUpdater = nullptr;
+        g_taskbarSeekBar.reset();
+        StopProgressTimer();
         g_cachedAlbumTitle.clear();
         g_cachedAlbumArtist.clear();
         g_cachedThumbnailBytes.clear();
@@ -9112,6 +9678,7 @@ static void RemovePlayerGrid() {
         g_miniPlayerRepeatBtnRef      = nullptr;
         g_miniPlayerSessionListRef    = nullptr;
         g_miniPlayerSessionListSepRef = nullptr;
+        g_miniSeekBar.reset();
     }
 }
 static void RefreshPlayerContents() {
@@ -10228,7 +10795,9 @@ void Wh_ModUninit() {
             g_miniPlayerRepeatBtnRef      = nullptr;
             g_miniPlayerSessionListRef    = nullptr;
             g_miniPlayerSessionListSepRef = nullptr;
+            g_miniSeekBar.reset();
             g_fluentMediaButtonStyle      = nullptr;
+            g_taskbarSeekBar.reset();
         }, nullptr);
     else {
         g_mediaHoverBrush   = nullptr;
